@@ -131,33 +131,33 @@
 
 		
 		/* This container ensures everything stays in one line */
-.map-links-inline {
-    display: flex;         /* Enables flexbox */
-    flex-direction: row;   /* Aligns items horizontally */
-    align-items: center;   /* Centers items vertically */
-    gap: 15px;             /* Adds space between the links */
-    flex-wrap: nowrap;     /* Prevents them from jumping to the next line */
-    overflow-x: auto;      /* Adds a scrollbar on mobile if screen is too narrow */
-    white-space: nowrap;   /* Ensures text doesn't wrap inside the link */
-}
+		.map-links-inline {
+			display: flex;         /* Enables flexbox */
+			flex-direction: row;   /* Aligns items horizontally */
+			align-items: center;   /* Centers items vertically */
+			gap: 15px;             /* Adds space between the links */
+			flex-wrap: nowrap;     /* Prevents them from jumping to the next line */
+			overflow-x: auto;      /* Adds a scrollbar on mobile if screen is too narrow */
+			white-space: nowrap;   /* Ensures text doesn't wrap inside the link */
+		}
 
-.map-link {
-    text-decoration: none;
-    font-size: 13px;
-    color: #0066cc;
-    display: flex;
-    align-items: center;
-    gap: 5px; /* Space between icon and text */
-}
+		.map-link {
+			text-decoration: none;
+			font-size: 13px;
+			color: #0066cc;
+			display: flex;
+			align-items: center;
+			gap: 5px; /* Space between icon and text */
+		}
 
-.map-link i {
-    font-size: 14px;
-}
+		.map-link i {
+			font-size: 14px;
+		}
 
-.map-link:hover {
-    text-decoration: underline;
-    color: #004499;
-}
+		.map-link:hover {
+			text-decoration: underline;
+			color: #004499;
+		}
 
 
         /* Voice Controls UI - Very Responsive */
@@ -230,8 +230,60 @@
             .v-btn { min-width: 100%; } /* Stack buttons on very small phones */
         }
     </style>
+	
+	<style>
+		.faq-item {
+			background: rgba(255,255,255,0.03);
+			border: 1px solid var(--glass-border);
+			border-radius: 12px;
+			margin-bottom: 10px;
+			padding: 15px;
+		}
+		.faq-q {
+			font-weight: 600;
+			color: #818cf8;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 8px;
+		}
+		.faq-a {
+			color: var(--text-dim);
+			font-size: 0.9rem;
+			line-height: 1.5;
+			padding-left: 28px;
+		}
+		.faq-tag {
+			font-size: 0.7rem;
+			background: rgba(168, 85, 247, 0.2);
+			color: var(--accent-purple);
+			padding: 2px 8px;
+			border-radius: 10px;
+			margin-left: 10px;
+			text-transform: uppercase;
+		}
+	</style>
+	
 </head>
 <body>
+
+	<div id="faqModal" class="modal-overlay">
+		<div class="modal-content" style="max-width: 900px; text-align: left;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px;">
+				<h2 style="margin:0; color: var(--accent-purple);"><i class="fas fa-microchip"></i> Technical Intelligence FAQ</h2>
+				<span style="cursor:pointer; font-size: 2rem;" id="closeFaqBtn">&times;</span>
+			</div>
+			
+			<div style="max-height: 65vh; overflow-y: auto; padding-right: 10px;" id="faqAccordion">
+				</div>
+			
+			<div style="margin-top: 20px; text-align: right;">
+				<button id="closeFaqBottom" class="send-btn" style="padding: 10px 25px; border: none; border-radius: 8px; cursor: pointer;">Close Documentation</button>
+			</div>
+		</div>
+	</div>
+
+	
 
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-content">
@@ -290,6 +342,7 @@
             <div class="brand"><i class="fas fa-bolt"></i><span>Rohit AI's Model</span></div>
             <a href="javascript:void(0);" onclick="window.location.reload();" class="nav-link active"><i class="fas fa-plus-circle"></i> New Chat</a>
             <a href="javascript:void(0);" id="openExploresBtn" class="nav-link"><i class="fas fa-compass"></i> Explore Model</a>
+			 <a href="javascript:void(0);" id="openFaqBtn" class="nav-link"><i class="fas fa-compass"></i> Faq's</a>
             <div style="margin-top: auto; padding-bottom: 20px;">
                 <a href="javascript:void(0);" id="openSettingsBtn" class="nav-link"><i class="fas fa-cog"></i> Settings</a>
             </div>
@@ -300,6 +353,7 @@
                 <div class="chat-content">
                     <div class="hero-section" id="hero">
                         <h1>How can I assist you?</h1>
+                        <h2>By Rohit's AI Model</h2>
                         <p style="color: var(--text-dim);">AI-Powered Semantic Location Discovery Model</p>
                     </div>
                     <div id="messages-list"></div>
@@ -582,6 +636,47 @@
             $('#sendBtn').click(() => sendMessage(userInput.val()));
             userInput.on('keypress', (e) => { if (e.which == 13) sendMessage(userInput.val()); });
         });
+		$(document).ready(function() {
+			const faqs = [
+				{ q: "What is the core AI Architecture?", a: "This is a RAG (Retrieval-Augmented Generation) inspired model using local embeddings.", tag: "Architecture" },
+				{ q: "Which Embedding Model is used?", a: "We use 'nomic-embed-text' via Ollama for 768-dimensional high-fidelity text mapping.", tag: "Deep Learning" },
+				{ q: "How is Semantic Similarity calculated?", a: "Using Cosine Similarity logic to measure the angle between the query vector and stored vectors.", tag: "Mathematics" },
+				{ q: "Why use MariaDB for vectors?", a: "It provides a reliable relational structure while allowing JSON storage for vector arrays.", tag: "Database" },
+				{ q: "What triggers the Web Fallback?", a: "A similarity score below 0.60 (60%) triggers an autonomous web-search agent.", tag: "Agentic AI" },
+				{ q: "How does the model 'Self-Learn'?", a: "New web results are vectorized and 'INSERTED' into the DB automatically for future use.", tag: "Machine Learning" },
+				{ q: "Is the data processed locally?", a: "Yes, Ollama processes embeddings locally, ensuring 100% data privacy and security.", tag: "Privacy" },
+				{ q: "What is Vector Normalization?", a: "We normalize vectors to a unit length so that Dot Product accurately reflects similarity.", tag: "Linear Algebra" },
+				{ q: "How does the Multilingual TTS work?", a: "It uses the Web Speech API combined with Neural Translation via the MyMemory API.", tag: "NLP" },
+				{ q: "How are coordinates verified?", a: "Via the Nominatim API, which provides precise Lat/Lon for every new discovered location.", tag: "Geo-Spatial" },
+				{ q: "What is the role of PHP in this AI model?", a: "PHP acts as the orchestrator, handling API cURL requests and mathematical filtering.", tag: "Backend" },
+				{ q: "How does it handle ambiguous queries?", a: "Semantic search focuses on context; 'greenery' maps to 'forests/parks' even without keyword matches.", tag: "Semantic AI" },
+				{ q: "Is the system scalable?", a: "Yes, by adding a dedicated Vector DB like Pinecone or Milvus, it can scale to millions of records.", tag: "Infrastructure" },
+				{ q: "What is the 'Score' badge in the UI?", a: "It is the percentage of mathematical confidence the AI has in that specific result.", tag: "Data Science" },
+				{ q: "How does it fetch 3D and Satellite views?", a: "By dynamically constructing URL parameters for Google Maps using the fetched coordinates.", tag: "Integration" },
+				{ q: "Can it run offline?", a: "The search works offline; only the Web Fallback and Translation require an internet connection.", tag: "Hybrid AI" },
+				{ q: "What is 'Dimensionality' in this context?", a: "The 768 dimensions allow the model to capture deep nuances of travel descriptions.", tag: "Deep Learning" },
+				{ q: "How does the Voice Input work?", a: "It uses the Webkit Speech Recognition API to convert audio to text for the AI to process.", tag: "Speech-to-Text" },
+				{ q: "How is 'Hallucination' prevented?", a: "By strictly using a 0.60 similarity threshold to ensure results are grounded in data.", tag: "Safety" },
+				{ q: "What is the future roadmap?", a: "Implementing Multi-modal learning to allow users to search using images of tourist spots.", tag: "Vision AI" }
+			];
+
+			// Inject FAQs
+			let faqHtml = '';
+			faqs.forEach((item, index) => {
+				faqHtml += `
+					<div class="faq-item">
+						<div class="faq-q"><i class="fas fa-circle-question"></i> ${item.q} <span class="faq-tag">${item.tag}</span></div>
+						<div class="faq-a">${item.answer || item.a}</div>
+					</div>`;
+			});
+			$('#faqAccordion').html(faqHtml);
+
+			// Modal Controls
+			$('#openFaqBtn').click(() => $('#faqModal').addClass('active'));
+			$('#closeFaqBtn, #closeFaqBottom').click(() => $('#faqModal').removeClass('active'));
+		});
     </script>
+	
+
 </body>
 </html>
