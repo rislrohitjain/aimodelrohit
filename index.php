@@ -335,12 +335,50 @@
             }
 
             // --- Voice TTS ---
-            function speakText(text) {
-                window.speechSynthesis.cancel();
-                if (!text.trim()) return;
-                const utterance = new SpeechSynthesisUtterance(text);
-                window.speechSynthesis.speak(utterance);
-            }
+            
+			
+			
+			function speakText(text) {
+				window.speechSynthesis.cancel();
+				if (!text.trim()) return;
+
+				const utterance = new SpeechSynthesisUtterance(text);
+				const voices = window.speechSynthesis.getVoices();
+
+				// Find Indian Male voice
+				// "Rishi" is the standard Apple/Microsoft male voice
+				// "Google Hindi" is the standard Android male voice
+				const indianMaleVoice = voices.find(voice => 
+					(voice.lang === 'en-IN' || voice.lang === 'hi-IN') && 
+					(voice.name.toLowerCase().includes('male') || 
+					 voice.name.toLowerCase().includes('rishi') || 
+					 voice.name.toLowerCase().includes('google hindi'))
+				);
+
+				if (indianMaleVoice) {
+					utterance.voice = indianMaleVoice;
+				} else {
+					// Fallback to any Indian voice if specific male one isn't found
+					const fallbackIndian = voices.find(v => v.lang === 'en-IN' || v.lang === 'hi-IN');
+					if (fallbackIndian) utterance.voice = fallbackIndian;
+				}
+
+				// Settings for a deeper, masculine tone
+				utterance.pitch = 0.9; // Slightly lower pitch for male voice
+				utterance.rate = 0.95; // Slightly slower for better clarity
+
+				window.speechSynthesis.speak(utterance);
+			}
+
+			// Crucial: This triggers the voice list to load into memory
+			window.speechSynthesis.getVoices();
+			if (speechSynthesis.onvoiceschanged !== undefined) {
+				speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+			}
+
+
+			
+			
 
             function sendMessage(query) {
                 if (!query.trim()) return;
@@ -350,7 +388,7 @@
                 const messageId = 'msg-' + Date.now();
                 const userHtml = `
                     <div class="message-row">
-                        <div style="font-weight:600; margin-bottom:10px;"><i class="fas fa-user-circle"></i> Rohit</div>
+                        <div style="font-weight:600; margin-bottom:10px;"><i class="fas fa-user-circle"></i> Rohit Jain</div>
                         <div style="margin-left:32px; color:#cbd5e1; font-size:1.1rem; word-break: break-word;">${query}</div>
                         <div class="ai-card">
                             <div style="color:var(--accent-purple); font-weight:600; margin-bottom:15px;"><i class="fas fa-wand-magic-sparkles"></i> Rohit AI</div>
