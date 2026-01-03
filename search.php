@@ -119,7 +119,7 @@ if (isset($_POST['query'])) {
             $score = calculate_cosine_similarity($queryVector, $storedVector);
             
             // Only keep relevant results
-            if ($score >= 0.60) { // .60 .20
+            if ($score >= 0.80) { // .60 .20
 				$resultCounter++;
                 $matches[] = [
                     'latitude' => $row['latitude'],
@@ -137,7 +137,7 @@ if (isset($_POST['query'])) {
 	
 	// echo $resultCounter;die;
 	$newDesc = null;
-	if(false && $resultCounter <= 0){
+	if(true && $resultCounter <= 0){
 		// STEP 2: Fallback to Web Search if No Good Matches Found
 		if (empty($matches)) {
 			// 1. Get Description from DuckDuckGo
