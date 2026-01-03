@@ -101,7 +101,7 @@ if (isset($_POST['query'])) {
             $score = calculate_cosine_similarity($queryVector, $storedVector);
             
             // Only keep relevant results
-            if ($score >= 0.68) {
+            if ($score >= 0.20) { // .60
 				$resultCounter++;
                 $matches[] = [
                     'latitude' => $row['latitude'],

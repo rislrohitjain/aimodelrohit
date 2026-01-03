@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# 1. External Redirect: index.php -> index.jsp
+# This tells the browser to change the URL in the address bar
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /aimodelrohit/index\.php\ HTTP/
+RewriteRule ^index\.php$ http://localhost/aimodelrohit/index.jsp [R=301,L]
+
+# 2. Internal Mapping: .jsp -> .php
+# ONLY rewrite if the request is NOT for an actual file (like favicon.ico)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)\.jsp$ $1.php [NC,L]
