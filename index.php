@@ -129,6 +129,37 @@
         .map-link { color: #38bdf8; text-decoration: none; display: flex; align-items: center; gap: 8px; margin-top: 12px; transition: 0.2s; font-size: 0.9rem; }
         .map-link:hover { text-decoration: underline; opacity: 0.8; }
 
+		
+		/* This container ensures everything stays in one line */
+.map-links-inline {
+    display: flex;         /* Enables flexbox */
+    flex-direction: row;   /* Aligns items horizontally */
+    align-items: center;   /* Centers items vertically */
+    gap: 15px;             /* Adds space between the links */
+    flex-wrap: nowrap;     /* Prevents them from jumping to the next line */
+    overflow-x: auto;      /* Adds a scrollbar on mobile if screen is too narrow */
+    white-space: nowrap;   /* Ensures text doesn't wrap inside the link */
+}
+
+.map-link {
+    text-decoration: none;
+    font-size: 13px;
+    color: #0066cc;
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between icon and text */
+}
+
+.map-link i {
+    font-size: 14px;
+}
+
+.map-link:hover {
+    text-decoration: underline;
+    color: #004499;
+}
+
+
         /* Voice Controls UI - Very Responsive */
         .voice-controls { 
             display: flex; 
@@ -337,36 +368,77 @@
             // --- Voice TTS ---
             
 			
-			
-			function speakText(text) {
-				window.speechSynthesis.cancel();
-				if (!text.trim()) return;
+			// Function to translate only the limited "Voice Text"
+			async function translateText(text, targetLang) {
+				const shortLang = targetLang.split('-')[0]; 
+				// We encode the string to ensure the API handles spaces/punctuation correctly
+				const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${shortLang}`);
+				const data = await response.json();
+				return data.responseData.translatedText;
+			}
 
+			
+			
+			 // --- Global Stop Handler ---
+			// This handles both Local and English audio streams
+			$(document).on('click', '.stop-audio-global', function() {
+				window.speechSynthesis.cancel();
+				
+				// Optional: Reset any "loading" states on local play buttons
+				$('.local-play-audio').prop('disabled', false).html('<i class="fas fa-language"></i>');
+			});
+
+			// --- English Play Handler ---
+			$(document).on('click', '.play-audio', function() { 
+				speakText($(this).attr('data-text')); 
+			});
+
+			// --- Local (Translated) Play Handler ---
+			$(document).on('click', '.local-play-audio', async function() {
+				const btn = $(this);
+				// This grabs the 'cleanText' defined in the HTML template
+				const voiceText = btn.attr('data-text'); 
+				const targetLang = btn.siblings('.lang-select').val();
+				
+				// UI Feedback
+				btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+
+				try {
+					const translated = await translateText(voiceText, targetLang);
+					speakTextLocal(translated, targetLang);
+				} catch (err) {
+					console.error("Translation error", err);
+				} finally {
+					btn.html('<i class="fas fa-language"></i>').prop('disabled', false);
+				}
+			});
+
+			function speakTextLocal(text, langCode) {
+				window.speechSynthesis.cancel();
 				const utterance = new SpeechSynthesisUtterance(text);
 				const voices = window.speechSynthesis.getVoices();
 
-				// Find Indian Male voice
-				// "Rishi" is the standard Apple/Microsoft male voice
-				// "Google Hindi" is the standard Android male voice
-				const indianMaleVoice = voices.find(voice => 
-					(voice.lang === 'en-IN' || voice.lang === 'hi-IN') && 
-					(voice.name.toLowerCase().includes('male') || 
-					 voice.name.toLowerCase().includes('rishi') || 
-					 voice.name.toLowerCase().includes('google hindi'))
-				);
+				utterance.lang = langCode;
+				
+				// Prioritize high-quality local voices (like Google Hindi or Microsoft Hemant)
+				const localVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+				if (localVoice) utterance.voice = localVoice;
 
-				if (indianMaleVoice) {
-					utterance.voice = indianMaleVoice;
-				} else {
-					// Fallback to any Indian voice if specific male one isn't found
-					const fallbackIndian = voices.find(v => v.lang === 'en-IN' || v.lang === 'hi-IN');
-					if (fallbackIndian) utterance.voice = fallbackIndian;
-				}
+				utterance.pitch = 1.0;
+				utterance.rate = 0.9; // Slightly slower for better local language clarity
+				window.speechSynthesis.speak(utterance);
+			}
 
-				// Settings for a deeper, masculine tone
-				utterance.pitch = 0.9; // Slightly lower pitch for male voice
-				utterance.rate = 0.95; // Slightly slower for better clarity
-
+			// Helper for English Speech (Masculine Indian Tone)
+			function speakText(text) {
+				window.speechSynthesis.cancel();
+				const utterance = new SpeechSynthesisUtterance(text);
+				const voices = window.speechSynthesis.getVoices();
+				const indianMaleVoice = voices.find(v => (v.lang === 'en-IN' || v.lang === 'hi-IN') && v.name.toLowerCase().includes('male'));
+				
+				if (indianMaleVoice) utterance.voice = indianMaleVoice;
+				utterance.pitch = 0.9;
+				utterance.rate = 0.95;
 				window.speechSynthesis.speak(utterance);
 			}
 
@@ -409,30 +481,91 @@
 
 						if (data && data.length > 0) {
 							data.forEach(item => {
-								// Prepare the text for this specific item
 								const itemText = `${item.place_name}. ${item.desc}.`.replace(/"/g, '&quot;');
-								
-								htmlContent += `
-							<div class="result-item" style="margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
-								<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
-									<div style="display: flex; flex-direction: column; gap: 4px;">
-										<h3 style="margin:0; font-size:1.1rem; color: var(--text-main);">${item.place_name}</h3>
-										<span class="badge-score" style="width: fit-content;">${item.score}% Match</span>
+								// 1. Check if coordinates exist and are valid
+								const hasCoordinates = item.latitude != null && item.longitude != null;
+								// console.log(hasCoordinates);return false;
+
+								// 2. Generate the map link HTML only if coords are present
+								const { latitude: lat, longitude: lng } = item;
+
+								const mapLinkHtml = hasCoordinates ? `
+									<div class="map-links-inline">
+										<a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="map-link">
+											<i class="fas fa-map-marker-alt"></i> View Map
+										</a>
+
+										<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" class="map-link">
+											<i class="fas fa-directions"></i> Directions
+										</a>
+
+										<a href="https://www.google.com/maps/@${lat},${lng},100m/data=!3m1!1e3" target="_blank" class="map-link">
+											<i class="fas fa-satellite"></i> Satellite
+										</a>
+
+										<a href="https://www.google.com/maps/@${lat},${lng},150a,35y,350h,45t/data=!3m1!1e3" target="_blank" class="map-link">
+											<i class="fas fa-cube"></i> 3D View
+										</a>
+
+										<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}" target="_blank" class="map-link">
+											<i class="fas fa-street-view"></i> Street View
+										</a>
 									</div>
+								` : '';
 									
-									<div style="display: flex; gap: 8px;">
-										<button class="v-btn play-audio" data-text="${itemText}" 
-											style="min-width: 70px; padding: 8px 12px; font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);">
-											<i class="fas fa-play" style="font-size: 0.65rem;"></i> Play
-										</button>
-										<button class="v-btn stop-audio" 
-											style="min-width: 70px; padding: 8px 12px; font-size: 0.7rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2);">
-											<i class="fas fa-stop" style="font-size: 0.65rem;"></i> Stop
-										</button>
-									</div>
-								</div>
-								<p style="color:var(--text-dim); margin:12px 0 0 0; font-size:0.95rem; line-height:1.6;">${item.desc}</p>
-							</div>`;
+								htmlContent += `
+									<div class="result-item" style="margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
+										<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
+											<div style="display: flex; flex-direction: column; gap: 4px;">
+												<h3 style="margin:0; font-size:1.1rem; color: var(--text-main);">${item.place_name}</h3>
+												<span class="badge-score" style="width: fit-content;">${item.score}% Match</span>
+											</div>
+											
+											<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+												<select class="lang-select" style="background: rgba(15, 23, 42, 0.8); color: white; border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px; font-size: 0.75rem; outline:none;">
+													<option value="as-IN">Assamese</option>
+													<option value="bn-IN">Bengali</option>
+													<option value="brx-IN">Bodo</option>
+													<option value="doi-IN">Dogri</option>
+													<option value="gu-IN">Gujarati</option>
+													<option value="hi-IN" selected>Hindi</option>
+													<option value="kn-IN">Kannada</option>
+													<option value="ks-IN">Kashmiri</option>
+													<option value="kok-IN">Konkani</option>
+													<option value="mai-IN">Maithili</option>
+													<option value="ml-IN">Malayalam</option>
+													<option value="mni-IN">Meitei (Manipuri)</option>
+													<option value="mr-IN">Marathi</option>
+													<option value="ne-NP">Nepali</option>
+													<option value="or-IN">Odia</option>
+													<option value="pa-IN">Punjabi</option>
+													<option value="raj-IN">Rajasthani</option> <option value="sa-IN">Sanskrit</option>
+													<option value="sat-IN">Santali</option>
+													<option value="sd-IN">Sindhi</option>
+													<option value="ta-IN">Tamil</option>
+													<option value="te-IN">Telugu</option>
+													<option value="ur-IN">Urdu</option>
+												</select>
+
+												<button class="v-btn local-play-audio" data-text="${itemText}" title="Translate and Play"
+													style="min-width: 42px; padding: 8px 12px; font-size: 0.8rem; background: var(--primary-gradient); border: none;">
+													<i class="fas fa-language"></i>
+												</button>
+
+												<button class="v-btn play-audio" data-text="${itemText}" title="Play in English"
+													style="min-width: 42px; padding: 8px 12px; font-size: 0.8rem; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);">
+													<i class="fas fa-play"></i>
+												</button>
+
+												<button class="v-btn stop-audio-global" title="Stop Audio"
+													style="min-width: 42px; padding: 8px 12px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
+													<i class="fas fa-stop"></i>
+												</button>
+											</div>
+										</div>
+										<p style="color:var(--text-dim); margin:12px 0 0 0; font-size:0.95rem; line-height:1.6;">${item.desc}</p>
+										${mapLinkHtml}
+									</div>`;
 							});
 						} else {
 							htmlContent = "<p>No results found.</p>";
